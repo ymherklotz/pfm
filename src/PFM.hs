@@ -17,10 +17,14 @@ import           Control.Monad              (void)
 import           Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString as P
 import           Data.Binary.Get            (runGet)
-import           Data.Binary.IEEE754        (getFloat32be, getFloat32le)
+import           Data.Binary.IEEE754        (getFloat32be, getFloat32le,
+                                             putFloat32be, putFloat32le)
+import           Data.Binary.Put            (runPut)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as B
-import           Data.ByteString.Lazy       (fromStrict)
+import           Data.ByteString.Lazy       (fromStrict, toStrict)
+import qualified Data.ByteString.Lazy       as BL
+import           Data.Foldable              (fold)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
@@ -117,7 +121,31 @@ parser = do
       ColourImage -> parseColour
       MonoImage   -> parseMono
 
-parse :: ByteString -> IO ()
+imageType :: [Colour] -> Text
+imageType []           = "PF"
+imageType (Colour{}:_) = "PF"
+imageType (Mono{}:_)   = "Pf"
+
+tShow :: (Show a) => a -> Text
+tShow = T.pack . show
+
+encFloat :: Float -> BL.ByteString
+encFloat = runPut . putFloat32le
+
+encodeColour :: Colour -> BL.ByteString
+encodeColour (Colour ri gi bi) =
+  encFloat ri <> encFloat gi <> encFloat bi
+encodeColour (Mono m) =
+  encFloat m
+
+encode :: Image -> BL.ByteString
+encode (Image w h c) =
+  fromStrict (T.encodeUtf8 he) <> body
+  where
+    he = imageType c <> "\n" <> tShow w <> " " <> tShow h <> "\n-1.0\n"
+    body = fold $ encodeColour <$> c
+
+parse :: ByteString -> Image
 parse s = case P.parseOnly parser s of
-  Left str -> putStrLn str
-  Right i  -> print i
+  Left str -> error str
+  Right i  -> i
