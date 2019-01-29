@@ -1,7 +1,11 @@
 name:                pfm
 version:             0.1.0.0
--- synopsis:
--- description:
+synopsis:            PFM image parsing library for Debevec's format.
+description:
+  PFM image parsing library for Paul Debevec's format.
+  .
+  The website containing an explanation of the format
+  can be found here <http://www.pauldebevec.com/Research/HDR/PFM/>.
 homepage:            https://github.com/ymherklotz/pfm#readme
 license:             BSD3
 license-file:        LICENSE
@@ -12,6 +16,10 @@ category:            Image
 build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
+
+source-repository head
+  type: git
+  location: git://github.com/ymherklotz/pfm.git
 
 library
   hs-source-dirs:      src
