@@ -38,14 +38,20 @@ data Colour = Colour { r :: Float
             | Mono Float
             deriving (Show)
 
+data Endianness = Big | Little
+
+data ImageType = MonoImage | ColourImage
+
 matchText :: Text -> Parser ByteString
 matchText = P.string . T.encodeUtf8
 
-magicNumMono :: Parser ()
-magicNumMono = void $ matchText "Pf"
+magicNum :: Parser ImageType
+magicNum = do
+  match <- T.decodeUtf8 <$> (matchText "Pf" <|> matchText "PF")
+  if match == "Pf"
+    then return MonoImage
+    else return ColourImage
 
-magicNumRGB :: Parser ()
-magicNumRGB = void $ matchText "PF"
 
 skipNewline :: Parser ()
 skipNewline = P.skip isNewline
@@ -64,15 +70,24 @@ matchMult = P.many1 . P.satisfy . P.inClass
 num :: Parser Int
 num = decode <$> matchMult "0-9"
 
-endianness :: Parser Float
-endianness = decode <$> matchMult "0-9.-"
+endianness :: Parser Endianness
+endianness =
+  getEnd . (<0.0) . decode <$> matchMult "0-9.-"
+  where
+    getEnd True  = Little
+    getEnd False = Big
 
-float :: Parser Float
-float = runGet getFloat32le . fromStrict <$> P.take 4
+float :: Endianness -> Parser Float
+float e =
+  runGet conv . fromStrict <$> P.take 4
+  where
+    conv = case e of
+      Big    -> getFloat32be
+      Little -> getFloat32le
 
-header :: Parser (Int, Int, Float)
+header :: Parser (Int, Int, Endianness, ImageType)
 header = do
-  magicNumRGB
+  n <- magicNum
   skipNewline
   n1 <- num
   skipSpace
@@ -80,23 +95,27 @@ header = do
   skipNewline
   s <- endianness
   skipNewline
-  return (n1, n2, s)
+  return (n1, n2, s, n)
 
-parseColour :: Parser Colour
-parseColour = do
-  ri <- float
-  gi <- float
-  bi <- float
+parseColour :: Endianness -> Parser Colour
+parseColour e = do
+  ri <- float e
+  gi <- float e
+  bi <- float e
   return $ Colour ri gi bi
 
-parseMono :: Parser Colour
-parseMono = Mono <$> float
+parseMono :: Endianness -> Parser Colour
+parseMono e = Mono <$> float e
 
 parser :: Parser Image
 parser = do
-  (w, h, f) <- header
-  c <- P.many1 parseColour
+  (w, h, e, i) <- header
+  c <- P.many1 $ fun i e
   return $ Image w h c
+  where
+    fun i = case i of
+      ColourImage -> parseColour
+      MonoImage   -> parseMono
 
 parse :: ByteString -> IO ()
 parse s = case P.parseOnly parser s of
