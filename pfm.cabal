@@ -42,4 +42,5 @@ executable readpfm
                      , pfm
                      , text
                      , bytestring
+                     , criterion
   default-extensions:  OverloadedStrings

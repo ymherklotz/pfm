@@ -13,16 +13,15 @@ Debevec PFM reader
 module PFM where
 
 import           Control.Applicative        ((<|>))
-import           Control.Monad              (void)
 import           Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString as P
 import           Data.Binary.Get            (runGet)
 import           Data.Binary.IEEE754        (getFloat32be, getFloat32le,
-                                             putFloat32be, putFloat32le)
+                                             putFloat32le)
 import           Data.Binary.Put            (runPut)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as B
-import           Data.ByteString.Lazy       (fromStrict, toStrict)
+import           Data.ByteString.Lazy       (fromStrict)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Foldable              (fold)
 import           Data.Text                  (Text)
@@ -30,17 +29,29 @@ import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import           Data.Word                  (Word8)
 
-data Image = Image { width  :: Int
-                   , height :: Int
-                   , colour :: [Colour]
-                   } deriving (Show)
+data PFMImage = PFMImage { pfmWidth  :: Int
+                         , pfmHeight :: Int
+                         , pfmColour :: [[PFMColour]]
+                         } deriving (Show)
 
-data Colour = Colour { r :: Float
-                     , g :: Float
-                     , b :: Float
-                     }
-            | Mono Float
-            deriving (Show)
+data PPMImage = PPMImage { ppmWidth  :: Int
+                         , ppmHeight :: Int
+                         , ppmColour :: [[PPMColour]]
+                         } deriving (Show)
+
+data PFMColour = PFMColour { r :: Float
+                           , g :: Float
+                           , b :: Float
+                           }
+               | PFMMono Float
+               deriving (Show)
+
+data PPMColour = PPMColour { rw :: Word8
+                           , gw :: Word8
+                           , bw :: Word8
+                        }
+               | PPMMono Word8
+               deriving (Show)
 
 data Endianness = Big | Little
 
@@ -76,7 +87,7 @@ num = decode <$> matchMult "0-9"
 
 endianness :: Parser Endianness
 endianness =
-  getEnd . (<0.0) . decode <$> matchMult "0-9.-"
+  getEnd . (<(0.0 :: Float)) . decode <$> matchMult "0-9.-"
   where
     getEnd True  = Little
     getEnd False = Big
@@ -101,30 +112,30 @@ header = do
   skipNewline
   return (n1, n2, s, n)
 
-parseColour :: Endianness -> Parser Colour
+parseColour :: Endianness -> Parser PFMColour
 parseColour e = do
   ri <- float e
   gi <- float e
   bi <- float e
-  return $ Colour ri gi bi
+  return $ PFMColour ri gi bi
 
-parseMono :: Endianness -> Parser Colour
-parseMono e = Mono <$> float e
+parseMono :: Endianness -> Parser PFMColour
+parseMono e = PFMMono <$> float e
 
-parser :: Parser Image
+parser :: Parser PFMImage
 parser = do
   (w, h, e, i) <- header
-  c <- P.many1 $ fun i e
-  return $ Image w h c
+  c <- P.many1 . P.count w $ fun i e
+  return $ PFMImage w h c
   where
     fun i = case i of
       ColourImage -> parseColour
       MonoImage   -> parseMono
 
-imageType :: [Colour] -> Text
-imageType []           = "PF"
-imageType (Colour{}:_) = "PF"
-imageType (Mono{}:_)   = "Pf"
+magicNumPFM :: [[PFMColour]] -> Text
+magicNumPFM ((PFMColour{}:_):_) = "PF"
+magicNumPFM ((PFMMono{}:_):_)   = "Pf"
+magicNumPFM _                   = "PF"
 
 tShow :: (Show a) => a -> Text
 tShow = T.pack . show
@@ -132,20 +143,33 @@ tShow = T.pack . show
 encFloat :: Float -> BL.ByteString
 encFloat = runPut . putFloat32le
 
-encodeColour :: Colour -> BL.ByteString
-encodeColour (Colour ri gi bi) =
+encodeColourPFM :: PFMColour -> BL.ByteString
+encodeColourPFM (PFMColour ri gi bi) =
   encFloat ri <> encFloat gi <> encFloat bi
-encodeColour (Mono m) =
+encodeColourPFM (PFMMono m) =
   encFloat m
 
-encode :: Image -> BL.ByteString
-encode (Image w h c) =
+encodeColourPPM :: PPMColour -> BL.ByteString
+encodeColourPPM (PPMColour ri gi bi) =
+  BL.pack [ri, gi, bi]
+encodeColourPPM (PPMMono m) =
+  BL.pack [m, m, m]
+
+encode :: PFMImage -> BL.ByteString
+encode (PFMImage w h c) =
   fromStrict (T.encodeUtf8 he) <> body
   where
-    he = imageType c <> "\n" <> tShow w <> " " <> tShow h <> "\n-1.0\n"
-    body = fold $ encodeColour <$> c
+    he = magicNumPFM c <> "\n" <> tShow w <> " " <> tShow h <> "\n-1.0\n"
+    body = fold . fold $ fmap encodeColourPFM <$> c
 
-parse :: ByteString -> Image
+encodePPM :: PPMImage -> BL.ByteString
+encodePPM (PPMImage w h c) =
+  fromStrict (T.encodeUtf8 he) <> body
+  where
+    he = "P6" <> "\n" <> tShow w <> " " <> tShow h <> "\n255\n"
+    body = fold . fold $ fmap encodeColourPPM <$> c
+
+parse :: ByteString -> PFMImage
 parse s = case P.parseOnly parser s of
   Left str -> error str
   Right i  -> i
