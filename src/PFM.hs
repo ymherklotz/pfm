@@ -12,7 +12,7 @@ Debevec PFM reader
 
 module PFM where
 
-import           Control.Applicative        ((<|>))
+import           Control.Applicative        ((<$>), (<|>))
 import           Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString as P
 import           Data.Binary.Get            (runGet)
