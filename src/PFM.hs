@@ -10,7 +10,9 @@ Portability : POSIX
 Debevec PFM reader
 -}
 
-module PFM where
+module PFM ( parse
+           , encode
+           , encodePPM) where
 
 import           Control.Applicative        ((<$>), (<|>))
 import           Data.Attoparsec.ByteString (Parser)
@@ -156,6 +158,8 @@ encodeColourPPM (PPMColour ri gi bi) =
 encodeColourPPM (PPMMono m) =
   BL.pack [m, m, m]
 
+-- | Encode as a PFM file. Returns a lazy ByteString with the encoded
+-- result.
 encode :: PFMImage -> BL.ByteString
 encode (PFMImage w h c) =
   fromStrict (T.encodeUtf8 he) <> body
@@ -163,6 +167,8 @@ encode (PFMImage w h c) =
     he = magicNumPFM c <> "\n" <> tShow w <> " " <> tShow h <> "\n-1.0\n"
     body = fold . fold $ fmap encodeColourPFM <$> c
 
+-- | Encode as a PPM file. Returns a lazy ByteString which contains the encoded
+-- file.
 encodePPM :: PPMImage -> BL.ByteString
 encodePPM (PPMImage w h c) =
   fromStrict (T.encodeUtf8 he) <> body
@@ -170,6 +176,8 @@ encodePPM (PPMImage w h c) =
     he = "P6" <> "\n" <> tShow w <> " " <> tShow h <> "\n255\n"
     body = fold . fold $ fmap encodeColourPPM <$> c
 
+-- | Parse a 'ByteString' into a 'PFMImage'. These can be mono colour images or
+-- RGB colour images.
 parse :: ByteString -> PFMImage
 parse s = case P.parseOnly parser s of
   Left str -> error str
