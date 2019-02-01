@@ -24,6 +24,7 @@ import qualified Data.ByteString            as B
 import           Data.ByteString.Lazy       (fromStrict)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Foldable              (fold)
+import           Data.Monoid                ((<>))
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
