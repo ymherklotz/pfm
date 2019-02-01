@@ -14,7 +14,7 @@ module PFM ( parse
            , encode
            , encodePPM) where
 
-import           Control.Applicative        ((<$>), (<|>))
+import           Control.Applicative        ((<|>))
 import           Data.Attoparsec.ByteString (Parser)
 import qualified Data.Attoparsec.ByteString as P
 import           Data.Binary.Get            (runGet)
@@ -26,6 +26,7 @@ import qualified Data.ByteString            as B
 import           Data.ByteString.Lazy       (fromStrict)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Foldable              (fold)
+import           Data.Functor               ((<$>))
 import           Data.Monoid                ((<>))
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
