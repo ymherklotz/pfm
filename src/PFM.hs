@@ -17,6 +17,8 @@ module PFM ( PFMImage(..)
            , parse
            , encode
            , encodePPM
+           , revColour
+           , gamma
            , module PFM.Vec) where
 
 import           Control.Applicative        ((<|>))
@@ -49,17 +51,17 @@ data PPMImage = PPMImage { ppmWidth  :: Int
                          , ppmColour :: [[PPMColour]]
                          } deriving (Show)
 
-data PFMColour = PFMColour { r :: Float
-                           , g :: Float
-                           , b :: Float
+data PFMColour = PFMColour { getR :: Float
+                           , getG :: Float
+                           , getB :: Float
                            }
                | PFMMono Float
                deriving (Show)
 
-data PPMColour = PPMColour { rw :: Word8
-                           , gw :: Word8
-                           , bw :: Word8
-                        }
+data PPMColour = PPMColour { getRw :: Word8
+                           , getGw :: Word8
+                           , getBw :: Word8
+                           }
                | PPMMono Word8
                deriving (Show)
 
@@ -189,3 +191,10 @@ parse :: ByteString -> PFMImage
 parse s = case P.parseOnly parser s of
   Left str -> error str
   Right i  -> i
+
+revColour :: PFMImage -> PFMImage
+revColour (PFMImage w h i) =
+  PFMImage w h $ reverse i
+
+gamma :: (Floating a) => a -> a -> a
+gamma g m = m ** (1 / g)
