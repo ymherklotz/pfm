@@ -10,7 +10,11 @@ Portability : POSIX
 Debevec PFM reader
 -}
 
-module PFM ( parse
+module PFM ( PFMImage(..)
+           , PPMImage(..)
+           , PFMColour(..)
+           , PPMColour(..)
+           , parse
            , encode
            , encodePPM
            , module PFM.Vec) where
