@@ -12,7 +12,8 @@ Debevec PFM reader
 
 module PFM ( parse
            , encode
-           , encodePPM) where
+           , encodePPM
+           , module PFM.Vec) where
 
 import           Control.Applicative        ((<|>))
 import           Data.Attoparsec.ByteString (Parser)
@@ -32,6 +33,7 @@ import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
 import           Data.Word                  (Word8)
+import           PFM.Vec
 
 data PFMImage = PFMImage { pfmWidth  :: Int
                          , pfmHeight :: Int
