@@ -38,31 +38,37 @@ import           Data.Monoid                ((<>))
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.Encoding         as T
+import           Data.Vector                (Vector)
+import qualified Data.Vector                as V
 import           Data.Word                  (Word8)
 import           PFM.Vec
 
-data PFMImage = PFMImage { pfmWidth  :: Int
-                         , pfmHeight :: Int
-                         , pfmColour :: [[PFMColour]]
+type PFMColours = Vector (Vector PFMColour)
+
+type PPMColours = Vector (Vector PPMColour)
+
+data PFMImage = PFMImage { pfmWidth  :: {-# UNPACK #-} !Int
+                         , pfmHeight :: {-# UNPACK #-} !Int
+                         , pfmColour :: {-# UNPACK #-} !PFMColours
                          } deriving (Show)
 
-data PPMImage = PPMImage { ppmWidth  :: Int
-                         , ppmHeight :: Int
-                         , ppmColour :: [[PPMColour]]
+data PPMImage = PPMImage { ppmWidth  :: {-# UNPACK #-} !Int
+                         , ppmHeight :: {-# UNPACK #-} !Int
+                         , ppmColour :: {-# UNPACK #-} !PPMColours
                          } deriving (Show)
 
-data PFMColour = PFMColour { getR :: Float
-                           , getG :: Float
-                           , getB :: Float
+data PFMColour = PFMColour { getR :: {-# UNPACK #-} !Float
+                           , getG :: {-# UNPACK #-} !Float
+                           , getB :: {-# UNPACK #-} !Float
                            }
-               | PFMMono Float
+               | PFMMono {-# UNPACK #-} !Float
                deriving (Show)
 
-data PPMColour = PPMColour { getRw :: Word8
-                           , getGw :: Word8
-                           , getBw :: Word8
+data PPMColour = PPMColour { getRw :: {-# UNPACK #-} !Word8
+                           , getGw :: {-# UNPACK #-} !Word8
+                           , getBw :: {-# UNPACK #-} !Word8
                            }
-               | PPMMono Word8
+               | PPMMono {-# UNPACK #-} !Word8
                deriving (Show)
 
 data Endianness = Big | Little
@@ -137,17 +143,17 @@ parseMono e = PFMMono <$> float e
 parser :: Parser PFMImage
 parser = do
   (w, h, e, i) <- header
-  c <- P.many1 . P.count w $ fun i e
+  c <- V.fromList <$> (P.many1 . fmap V.fromList . P.count w) (fun i e)
   return $ PFMImage w h c
   where
     fun i = case i of
       ColourImage -> parseColour
       MonoImage   -> parseMono
 
-magicNumPFM :: [[PFMColour]] -> Text
-magicNumPFM ((PFMColour{}:_):_) = "PF"
-magicNumPFM ((PFMMono{}:_):_)   = "Pf"
-magicNumPFM _                   = "PF"
+magicNumPFM :: PFMColours -> Text
+magicNumPFM v = case V.head $ V.head v of
+    PFMColour{} -> "PF"
+    PFMMono{}   -> "Pf"
 
 tShow :: (Show a) => a -> Text
 tShow = T.pack . show
@@ -194,7 +200,7 @@ parse s = case P.parseOnly parser s of
 
 revColour :: PFMImage -> PFMImage
 revColour (PFMImage w h i) =
-  PFMImage w h $ reverse i
+  PFMImage w h $ V.reverse i
 
 gamma :: (Floating a) => a -> a -> a
 gamma g m = m ** (1 / g)
