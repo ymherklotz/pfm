@@ -1,10 +1,10 @@
 module Main where
 
-import qualified Data.ByteString.Lazy  as BL
+import qualified Data.ByteString.Lazy          as BL
 import           PFM
 import           Test.Tasty
-import           Test.Tasty.QuickCheck ((===))
-import qualified Test.Tasty.QuickCheck as QC
+import           Test.Tasty.QuickCheck          ( (===) )
+import qualified Test.Tasty.QuickCheck         as QC
 
 newtype TestPFMImage = TestPFMImage { getPFMImage :: PFMImage }
                      deriving (Show)
@@ -34,10 +34,10 @@ instance QC.Arbitrary TestPPMColour where
 
 parserIdempotent' :: TestPFMImage -> QC.Property
 parserIdempotent' (TestPFMImage v) = p i === (p . p) i
-    where
-        encStrict = BL.toStrict . encode
-        i = encStrict v
-        p = encStrict . parse
+  where
+    encStrict = BL.toStrict . encode
+    i         = encStrict v
+    p         = encStrict . parse
 
 parserIdempotent :: TestTree
 parserIdempotent = QC.testProperty "parser idempotent" parserIdempotent'

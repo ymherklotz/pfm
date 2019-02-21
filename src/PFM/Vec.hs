@@ -33,44 +33,31 @@ instance Functor Sph where
   fmap f (Sph (a, b)) = Sph (f a, f b)
 
 findZ :: (RealFloat a) => a -> a -> Vec a
-findZ x y =
-  Vec (x, y, z)
+findZ x y = Vec (x, y, z)
   where
-    sq = sqrt (1 - x**2 - y**2)
-    z = if isNaN sq then 0 else sq
+    sq = sqrt (1 - x ** 2 - y ** 2)
+    z  = if isNaN sq then 0 else sq
 
 dot :: (Num a) => Vec a -> Vec a -> a
-dot (Vec (x1, y1, z1)) (Vec (x2, y2, z2)) =
-  x1 * x2 + y1 * y2 + z1 * z2
+dot (Vec (x1, y1, z1)) (Vec (x2, y2, z2)) = x1 * x2 + y1 * y2 + z1 * z2
 
 normalise :: (RealFloat a) => Int -> (Int, Int) -> Vec a
-normalise size (y, x) =
-  findZ (scale x) $ scale y
-  where
-    scale a = 2 * fromIntegral a / fromIntegral size - 1
+normalise size (y, x) = findZ (scale x) $ scale y
+    where scale a = 2 * fromIntegral a / fromIntegral size - 1
 
 reflect :: (RealFloat a) => Int -> Vec a -> (Int, Int) -> Vec a
-reflect size v (y, x) =
-  l - v
+reflect size v (y, x) = l - v
   where
     n = normalise size (y, x)
-    l = ((2 * dot n v)*) <$> n
+    l = ((2 * dot n v) *) <$> n
 
 toSpherical :: (Floating a, Eq a, Ord a) => Vec a -> Sph a
-toSpherical (Vec (x, y, z))
-  | z == 0 && x >= 0 =
-    Sph (acos y, pi / 2)
-  | z == 0 =
-    Sph (acos y, - pi / 2)
-  | z < 0 && x >= 0 =
-    Sph (acos y, pi + atan (x / z))
-  | z < 0 =
-    Sph (acos y, - pi + atan (x / z))
-  | otherwise =
-    Sph (acos y, atan (x / z))
+toSpherical (Vec (x, y, z)) | z == 0 && x >= 0 = Sph (acos y, pi / 2)
+                            | z == 0           = Sph (acos y, -pi / 2)
+                            | z < 0 && x >= 0  = Sph (acos y, pi + atan (x / z))
+                            | z < 0            = Sph (acos y, -pi + atan (x / z))
+                            | otherwise        = Sph (acos y, atan (x / z))
 
 indexLatLong :: (RealFrac a, Floating a) => Int -> Int -> Sph a -> (Int, Int)
 indexLatLong w h (Sph (theta, phi)) =
-  ( floor $ theta / pi * fromIntegral h
-  , floor $ ((phi / (2 * pi)) + 0.5) * fromIntegral w
-  )
+    (floor $ theta / pi * fromIntegral h, floor $ ((phi / (2 * pi)) + 0.5) * fromIntegral w)
